@@ -1,0 +1,8 @@
+CherryPy==3.3.0
+Jinja2==2.7.3
+MarkupSafe==0.23
+WebOb==1.4
+fanstatic==0.16
+js.jquery==1.9.1
+pyserial==2.7
+wsgiref==0.1.2

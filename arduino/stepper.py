@@ -41,7 +41,7 @@ class StepperComm:
 		print 'wayUp'
 
 
-if __name__ == '__main__':
+def main():
 	import time
 	scom = StepperComm()
 	scom.up()
@@ -51,3 +51,7 @@ if __name__ == '__main__':
 	scom.Down()
 	#scom.wayUp()
 	#scom.wayDown()
+
+
+if __name__ == '__main__':
+	main()

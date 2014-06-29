@@ -10,6 +10,16 @@ class Root(object):
     def index(self):
         return {}
 
+    # if these are exposed via static, they'll be cached, and changes won't propogate
+    @cherrypy.expose
+    def image(self):
+        return open('static/image.png', 'r').read()
+
+    # if these are exposed via static, they'll be cached, and changes won't propogate
+    @cherrypy.expose
+    def info(self):
+        return open('static/image.info', 'r').read()
+
 if __name__ == '__main__':
     config = {
         '/static': {

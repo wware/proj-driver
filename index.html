@@ -14,7 +14,7 @@ $(function() {
 	var listening = true;
 	setInterval(function() {
 		if (!listening) return;
-		$.ajax('/static/image.info').success(
+		$.ajax('/info').success(
 			function(value) {
 				var values = $.map(value.trim().split(' '), function(value) {
 					return parseInt(value);
@@ -24,7 +24,7 @@ $(function() {
 				console.log(values);
 				if (currentId <= lastId) return;
 				lastId = currentId;
-				$('#myimage').attr('src', '/static/image.png');
+				$('#myimage').attr('src', '/image');
 				$('#myimage').attr('style', 'display: block;');
 				setTimeout(function() {
 					$('#myimage').attr('style', 'display: none;');

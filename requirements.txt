@@ -2,7 +2,12 @@ CherryPy==3.3.0
 Jinja2==2.7.3
 MarkupSafe==0.23
 WebOb==1.4
+docopt==0.6.2
 fanstatic==0.16
+flake8==2.2.0
 js.jquery==1.9.1
+mccabe==0.2.1
+pep8==1.5.7
+pyflakes==0.8.1
 pyserial==2.7
 wsgiref==0.1.2

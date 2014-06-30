@@ -2,5 +2,5 @@ from arduino.stepper import main
 import time
 
 while True:
-	main()
-	time.sleep(1)
+    main()
+    time.sleep(1)

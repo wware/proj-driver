@@ -1,0 +1,4 @@
+*.rgb
+*.pyc
+static/image.*
+venv/

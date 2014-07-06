@@ -6,33 +6,35 @@
 <script src="/static/jquery.js">
 </script>
 </head>
-<body style="background-color: #000000;">
+<body style="background-color: #400000;">
 <image id="myimage" style="display: none;"></image>
 <script type="text/javascript">
 $(function() {
-	var lastId = -1;
-	var listening = true;
-	setInterval(function() {
-		if (!listening) return;
-		$.ajax('/info').success(
-			function(value) {
-				var values = $.map(value.trim().split(' '), function(value) {
-					return parseInt(value);
-				});
-				var currentId = values[0];
-				var milliseconds = values[1];
-				console.log(values);
-				if (currentId <= lastId) return;
-				lastId = currentId;
-				$('#myimage').attr('src', '/image');
-				$('#myimage').attr('style', 'display: block;');
-				setTimeout(function() {
-					$('#myimage').attr('style', 'display: none;');
-					listening = true;
-				}, milliseconds);
-			}
-		);
-	}, 500);
+    var lastId = -100000;
+    var pingServer = function() {
+        var refreshIntervalId = setInterval(function() {
+            $.ajax('/info').success(
+                function(value) {
+                    var values = $.map(value.trim().split(' '), function(value) {
+                        return parseInt(value);
+                    });
+                    var currentId = values[0];
+                    var milliseconds = values[1];
+                    console.log(values);
+                    if (currentId <= lastId) return;
+                    clearInterval(refreshIntervalId);
+                    lastId = currentId;
+                    $('#myimage').attr('src', '/image');
+                    $('#myimage').attr('style', 'display: block;');
+                    setTimeout(function() {
+                        $('#myimage').attr('style', 'display: none;');
+                        pingServer();
+                    }, milliseconds);
+                }
+            );
+        }, 500);
+    };
+    pingServer();
 });
 </script>
 </body>

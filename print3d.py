@@ -3,9 +3,7 @@
 
 """
 Usage:
-  CMD [-z <height>]
-  CMD [-t <seconds>]
-  CMD [-d <duration>] [--red | -r] [-s | --server]
+  CMD [-d <duration>] [--red | -r] [-s | --server] [-T | --test] [-D | --debug]
 """
 
 """
@@ -52,21 +50,28 @@ import string
 import sys
 import termios
 import threading
-import time
 import tty
 
 W, H = 1024, 768
 duration = 1000
 
+WHITE = '\xff\xff\xff'
+RED = '\xff\x00\x00'
+
+SCALE = 3
+
+
+class AbstractMethodError(NotImplementedError):
+    pass
+
 
 class Image(object):
-    def __init__(self, z, scale=3):
+    def __init__(self, scale=SCALE):
         self.ary = array.array('B')
         self.ary.fromstring(3 * W * H * '\x00')
         self.scale = scale
-        self.z = z
 
-    def run(self, x1, x2, y, color='\xff\xff\xff'):
+    def run(self, x1, x2, y, color=WHITE):
         assert x1 <= x2
         if x1 == x2:
             return
@@ -79,7 +84,7 @@ class Image(object):
         middle.fromstring((x2 - x1) * color)
         self.ary = self.ary[:begin] + middle + self.ary[end:]
 
-    def rectangle(self, xcenter, ycenter, xsize, ysize, color='\xff\xff\xff'):
+    def rectangle(self, xcenter, ycenter, xsize, ysize, color=WHITE):
         if self.scale is not None:
             xcenter = int((W / 2) + self.scale * xcenter)
             ycenter = int((H / 2) - self.scale * ycenter)   # intentional
@@ -95,7 +100,7 @@ class Image(object):
                      (ycenter - ysize2) + i,
                      color)
 
-    def circle(self, xcenter, ycenter, radius, color='\xff\xff\xff'):
+    def circle(self, xcenter, ycenter, radius, color=WHITE):
         if self.scale is not None:
             xcenter = int((W / 2) + self.scale * xcenter)
             ycenter = int((H / 2) - self.scale * ycenter)   # intentional
@@ -109,7 +114,7 @@ class Image(object):
                          color)
 
     def hollow_diamond(self, xcenter, ycenter, size, width,
-                       color='\xff\xff\xff'):
+                       color=WHITE):
         if self.scale is not None:
             xcenter = int((W / 2) + self.scale * xcenter)
             ycenter = int((H / 2) - self.scale * ycenter)   # intentional
@@ -130,7 +135,7 @@ class Image(object):
             y = int(ycenter + size - width) + i
             self.run(xcenter - width + i, xcenter + width - i, y, color)
 
-    def write(self):
+    def write(self, z):
         try:
             os.remove('foo.rgb')
         except:
@@ -141,82 +146,16 @@ class Image(object):
         os.system(('convert -size {0}x{1} -alpha off -depth 8' +
                    ' foo.rgb static/image.png').format(W, H))
         os.system('echo "{0} {1}" > static/image.info'
-                  .format(self.z, duration))
-
-
-def getch():
-    fd = sys.stdin.fileno()
-    old_settings = termios.tcgetattr(fd)
-    try:
-        tty.setraw(sys.stdin.fileno())
-        ch = sys.stdin.read(1)
-    finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-    return ch
-
-
-img = None
-
-
-class addPedestal(object):
-    """
-    >>> @addPedestal(0, 0)
-    ... def f(z):
-    ...     print z
-    >>> for i in range(25):
-    ...     f(i)
-    This test needs work.
-    """
-    N = 10
-
-    def __init__(self, x, y):
-        self.x, self.y = x, y
-
-    def __call__(self, f):
-        def inner(z, duration, color):
-            if z < self.N:
-                img.rectangle(0, 0, 3, 3, color)
-                img.write()
-                print 'pedestal', z
-            else:
-                f(z - self.N, duration, color)
-        return inner
-
-
-@addPedestal(0, 0)
-def layer(z, duration=2000, color='\xff\xff\xff'):
-    # print 'LAYER', z
-    if z in range(0, 36):
-        img.rectangle(-z, 0, 10, 7, color)
-        img.rectangle(z, 0, 10, 7, color)
-        img.rectangle(0, -z, 7, 10, color)
-        img.rectangle(0, z, 7, 10, color)
-    elif z in range(36, 40):
-        img.rectangle(-z, 0, 10, 7, color)
-        img.rectangle(z, 0, 10, 7, color)
-        img.rectangle(0, -z, 7, 10, color)
-        img.rectangle(0, z, 7, 10, color)
-        img.hollow_diamond(0, 0, 40, 7, color)
-    elif z in range(40, 43):
-        img.rectangle(80 - z, 0, 10, 7, color)
-        img.rectangle(z - 80, 0, 10, 7, color)
-        img.rectangle(0, 80 - z, 7, 10, color)
-        img.rectangle(0, z - 80, 7, 10, color)
-        img.hollow_diamond(0, 0, 40, 7, color)
-    elif z in range(43, 80):
-        img.rectangle(80 - z, 0, 10, 7, color)
-        img.rectangle(z - 80, 0, 10, 7, color)
-        img.rectangle(0, 80 - z, 7, 10, color)
-        img.rectangle(0, z - 80, 7, 10, color)
-    else:
-        CherryPyServer.stop()
-    img.write()
-    print 'z =', z
+                  .format(z, duration))
 
 
 class CherryPyServer(threading.Thread):
 
     server_running = False
+
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.daemon = True
 
     def run(self):
         config = {
@@ -263,45 +202,76 @@ class CherryPyServer(threading.Thread):
     def info(self):
         return open('static/image.info', 'r').read()
 
-    @classmethod
-    def stop(cls):
-        if cls.server_running:
+    def stop(self):
+        if self.server_running:
             cherrypy.engine.exit()
         raise SystemExit
 
+    def build_supports(self, color):
+        for z in range(-20, 0):
+            img = Image()
+            for x, y in self.supports():
+                img.rectangle(x, y, 3, 3, color)
+            img.write(z)
+            self.after_layer()
+
+    def supports(self):
+        raise AbstractMethodError
+
+    def layer(self, z, img, duration=2000, color=WHITE):
+        raise AbstractMethodError
+
+    def after_layer(self):
+        def getch():
+            fd = sys.stdin.fileno()
+            old_settings = termios.tcgetattr(fd)
+            try:
+                tty.setraw(sys.stdin.fileno())
+                ch = sys.stdin.read(1)
+            finally:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+            return ch
+
+        while True:
+            ch = getch()
+            if ch in ('q', 'Q'):
+                self.stop()
+                raise SystemExit
+            if ch in ('n', 'N'):
+                break
+
     @classmethod
     def main(cls):
-        global img, duration
+        global duration
+
         args = docopt.docopt(__doc__.replace('CMD', sys.argv[0]))
+
+        if args['-T'] or args['--test']:
+            import doctest
+            # verbose=True can be useful
+            failure_count, test_count = \
+                doctest.testmod(optionflags=doctest.ELLIPSIS)
+            sys.exit(failure_count)
+
+        instance = cls()
         if args['-s'] or args['--server']:
-            server = cls()
-            cls.server_running = True
-            server.start()
-        if args['-z']:
-            z = string.atoi(args['<height>'])
-            layer(z)
-        elif args['-t']:
-            secs = string.atoi(args['<seconds>'])
-            for z in range(80):
-                layer(z)
-                time.sleep(secs)
+            instance.server_running = True
+            instance.start()
+
+        if args['-r'] or args['--red']:
+            color = RED
         else:
-            red = args['-r'] or args['--red']
-            if red:
-                color = '\xff\x00\x00'
-            else:
-                color = '\xff\xff\xff'
-            duration = string.atoi(args['<duration>'])
-            for z in range(1000):
-                img = Image(z)
-                layer(z, duration, color)
-                while True:
-                    ch = getch()
-                    if ch in ('q', 'Q'):
-                        cls.stop()
-                        raise SystemExit
-                    if ch in ('n', 'N'):
-                        break
+            color = WHITE
+
+        duration = string.atoi(args['<duration>'])
+
+        instance.build_supports(color)
+        for z in range(1000):   # die on StopIteration or instance.stop()
+            img = Image()
+            instance.layer(z, img, duration, color)
+            instance.after_layer()
+            img.write(z)
+            print z
 
 
 if __name__ == '__main__':

@@ -1,75 +1,51 @@
-char inChar;
-int dir, steps;
-int communicating = 0;
+#include <stdlib.h>
+
+char buf[10];
+int bufptr;
 
 int DIRECTION = 12, STEP = 13;
 
 void setup() {
-  Serial.begin(9600);
-  inChar = '\0';
-  digitalWrite(STEP, LOW);
+    Serial.begin(9600);
+    pinMode(STEP, OUTPUT);
+    pinMode(DIRECTION, OUTPUT);
+    digitalWrite(STEP, LOW);
+    digitalWrite(DIRECTION, LOW);
+    bufptr = 0;
 }
 
 void briefWait() {
-  delayMicroseconds(1 * 1000);
+    delayMicroseconds(1000);
+}
+
+void run_motor(int dir, int steps) {
+    digitalWrite(DIRECTION, dir);
+    while (steps > 0) {
+        briefWait();
+        digitalWrite(STEP, HIGH);
+        briefWait();
+        digitalWrite(STEP, LOW);
+        steps--;
+    }
 }
 
 void loop() {
-  if (!communicating) {
-    Serial.println("A");
-    delay(500);
-  }
-  else if (inChar != '\0') {
-    digitalWrite(DIRECTION, dir);
-    while (steps > 0) {
-      briefWait();
-      digitalWrite(STEP, HIGH);
-      briefWait();
-      digitalWrite(STEP, LOW);
-      steps--;
+    int dir, steps;
+    char c;
+    while (Serial.available()) {
+        buf[bufptr++] = c = (char)Serial.read();
+        if (c == '\n') {
+            steps = atoi(buf);
+            if (steps < 0) {
+                dir = 1;
+                steps = -steps;
+            } else {
+                dir = 0;
+            }
+            run_motor(dir, steps);
+            Serial.println("OK");
+            bufptr = 0;
+            return;
+        }
     }
-    Serial.print(inChar);
-    inChar = '\0';
-  }
-}
-
-void serialEvent() {
-  if (!communicating) {
-    Serial.println("OK");
-    communicating = 1;
-    return;
-  }
-  while (Serial.available()) {
-    inChar = (char)Serial.read();
-    Serial.print(inChar);
-    switch (inChar) {
-      case 'j':
-        dir = LOW;
-        steps = 90;
-        break;
-      case 'k':
-        dir = HIGH;
-        steps = 90;
-        break;
-      case 'J':
-        dir = LOW;
-        steps = 900;
-        break;
-      case 'K':
-        dir = HIGH;
-        steps = 900;
-        break;
-      case 'U':
-        dir = LOW;
-        steps = 9000;
-        break;
-      case 'I':
-        dir = HIGH;
-        steps = 9000;
-        break;
-      default:
-        steps = 0;
-        break;
-    }
-  }
 }

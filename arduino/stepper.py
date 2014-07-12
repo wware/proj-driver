@@ -1,43 +1,43 @@
+SIGN = 1
+
+
 class StepperComm:
+
     def __init__(self):
         from serial import Serial
         self.ser = Serial('/dev/tty.usbmodem1421', 9600, timeout=30)
-        while True:
-            L = self.ser.readline()
-            if L.strip() == 'A':
-                self._do('A\n')
-                break
+        #self._do(0)
+
+    def _do(self, num):
+        assert type(num) is type(3)
+        self.ser.write(repr(num) + '\n')
         self.ser.readline()
 
-    def _do(self, char):
-        self.ser.write(char + '\n')
-        while True:
-            x = self.ser.readline()
-            if x.startswith(char):
-                return
-
+    # 1/100th of an inch
     def down(self):
-        self._do('j')
+        self._do(SIGN * 720)
         print 'down'
 
     def up(self):
-        self._do('k')
+        self._do(SIGN * -720)
         print 'up'
 
+    # 1/10th of an inch
     def Down(self):
-        self._do('J')
+        self._do(SIGN * 7200)
         print 'Down'
 
     def Up(self):
-        self._do('K')
+        self._do(SIGN * -7200)
         print 'Up'
 
+    # 1 inch
     def wayDown(self):
-        self._do('U')
+        self._do(SIGN * 72000)
         print 'wayDown'
 
     def wayUp(self):
-        self._do('I')
+        self._do(SIGN * -72000)
         print 'wayUp'
 
 
@@ -47,10 +47,10 @@ def main():
     scom.up()
     time.sleep(0.1)
     scom.down()
+    time.sleep(0.1)
     scom.Up()
+    time.sleep(0.1)
     scom.Down()
-    # scom.wayUp()
-    # scom.wayDown()
 
 
 if __name__ == '__main__':

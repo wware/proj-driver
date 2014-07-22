@@ -3,42 +3,8 @@
 
 """
 Usage:
-  CMD [-d <duration>] [--red | -r] [-s | --server] [-T | --test] [-D | --debug]
-"""
-
-"""
-It would be great to handle STL files. So you need some command line arguments:
-    the STL filename
-    the offsets and scale factors for x, y, and z
-    the current z value
-
-Then do something like this. In this case you'll be writing line by line and
-won't need an "ary" for the entire image.
-
-    for each yline
-        create a triangle list
-    for each triangle in the STL file
-        transform triangle into correct coordinate space
-        get ymin, ymax, zmin, zmax
-        if zmin <= z <= zmax:
-            for y in range(ymin, ymax):
-                add triangle to triangle list for y
-    open the output file
-    for each yline
-        create a point list
-        for each triangle in this yline's triangle list
-            compute intersection with this y and z value
-            if intersection exists:
-                if normal's x component > 0:
-                    add a "begin" point to the point list
-                elif normal's x component < 0:
-                    add an "end" point to the point list
-        sort point list by x coordinate
-        create a pixel array initialized to black
-        for each contiguous begin/end pair:
-            do a white run in pixel array
-        write pixel array to the output file
-    close the output file
+  CMD [-T | --test] [-D | --debug]
+  CMD [-d <duration>] [--red | -r] [-s | --server] [-D | --debug] --stl=<STLFILE>
 """
 
 import os.path
@@ -51,9 +17,19 @@ import sys
 import termios
 import threading
 import tty
+import logging
+
+logger = logging.getLogger('Arduino stepper control')
+ch = logging.StreamHandler()
+ch.setFormatter(
+    logging.Formatter("%(asctime)s - %(name)s - " +
+                      "%(levelname)s - %(message)s")
+)
+logger.addHandler(ch)
+
+from stl import generateRgb, Stl
 
 W, H = 1024, 768
-duration = 1000
 
 WHITE = '\xff\xff\xff'
 RED = '\xff\x00\x00'
@@ -62,6 +38,10 @@ SCALE = 3
 
 
 class AbstractMethodError(NotImplementedError):
+    pass
+
+
+class TodoError(NotImplementedError):
     pass
 
 
@@ -135,11 +115,7 @@ class Image(object):
             y = int(ycenter + size - width) + i
             self.run(xcenter - width + i, xcenter + width - i, y, color)
 
-    def write(self, z):
-        try:
-            os.remove('foo.rgb')
-        except:
-            pass
+    def write(self, z, duration):
         outf = open('foo.rgb', 'w')
         outf.write(self.ary.tostring())
         outf.close()
@@ -216,35 +192,26 @@ class CherryPyServer(threading.Thread):
             self.after_layer()
 
     def supports(self):
-        raise AbstractMethodError
+        pass
 
-    def layer(self, z, img, duration=2000, color=WHITE):
-        raise AbstractMethodError
+    def layer(self, z, img, color=WHITE):
+        outf = open(img, 'w')
+        generateRgb(z, self.stl, red, outf)
 
     def after_layer(self):
-        def getch():
-            fd = sys.stdin.fileno()
-            old_settings = termios.tcgetattr(fd)
-            try:
-                tty.setraw(sys.stdin.fileno())
-                ch = sys.stdin.read(1)
-            finally:
-                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-            return ch
-
-        while True:
-            ch = getch()
-            if ch in ('q', 'Q'):
-                self.stop()
-                raise SystemExit
-            if ch in ('n', 'N'):
-                break
+        """
+        Wait for the projector to say it's done - needs new CherryPy endpoint
+        Turn the stepper to lower the product one increment into the liquid
+        """
+        raise TodoError("wait for projector to be finished")
+        stepper.steps(-36)
 
     @classmethod
     def main(cls):
-        global duration
-
         args = docopt.docopt(__doc__.replace('CMD', sys.argv[0]))
+
+        if args['-D'] or args['--debug']:
+            logger.setLevel(logging.DEBUG)
 
         if args['-T'] or args['--test']:
             import doctest
@@ -258,20 +225,27 @@ class CherryPyServer(threading.Thread):
             instance.server_running = True
             instance.start()
 
-        if args['-r'] or args['--red']:
-            color = RED
+        red = (args['-r'] or args['--red'])
+
+        if args['-d']:
+            duration = string.atoi(args['<duration>'])
         else:
-            color = WHITE
+            duration = 1000
 
-        duration = string.atoi(args['<duration>'])
+        assert args['--stl'], __doc__
+        stl = Stl(args['--stl'])
 
-        instance.build_supports(color)
-        for z in range(1000):   # die on StopIteration or instance.stop()
-            img = Image()
-            instance.layer(z, img, duration, color)
+        # instance.build_supports(color)
+        for zi in range(1000000):   # die on StopIteration or instance.stop()
+            z = 0.01 * zi
+            outf = open('foo.rgb', 'w')
+            generateRgb(z, stl, red, outf)
+            outf.close()
+            os.system(('convert -size {0}x{1} -alpha off -depth 8' +
+                       ' foo.rgb static/image.png').format(W, H))
+            os.system('echo "{0} {1}" > static/image.info'
+                      .format(z, duration))
             instance.after_layer()
-            img.write(z)
-            print z
 
 
 if __name__ == '__main__':

@@ -1,6 +1,12 @@
 import logging
 
 logger = logging.getLogger('Arduino stepper control')
+ch = logging.StreamHandler()
+ch.setFormatter(
+    logging.Formatter("%(asctime)s - %(name)s - " +
+                      "%(levelname)s - %(message)s")
+)
+logger.addHandler(ch)
 
 SIGN = 1
 MOCK = True
@@ -47,12 +53,6 @@ class StepperComm:
 
 class MockStepperComm(StepperComm):
     def __init__(self):
-        ch = logging.StreamHandler()
-        ch.setFormatter(
-            logging.Formatter("%(asctime)s - %(name)s - " +
-                              "%(levelname)s - %(message)s")
-        )
-        logger.addHandler(ch)
         logger.setLevel(logging.DEBUG)
 
     def steps(self, num):

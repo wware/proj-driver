@@ -2,7 +2,7 @@
 
 """
 Usage:
-  CMD -z <ZVALUE> -f <filename> [-p | --profile]
+  CMD -z <ZVALUE>  [--red | -r] -f <filename> [-p | --profile]
   CMD (-T | --test) [-v | --verbose]
 
 Example:
@@ -23,14 +23,8 @@ class Stl:
         if type(args[0]) in (types.StringType, types.UnicodeType):
             self.filename = args[0]
             self.triangles = []
-            R = open(self.filename).read()
-            self.preamble = ''.join(filter(lambda ch: ch != '\0', list(R[:80])))
-            R = R[80:]
-            numTriangles, R = struct.unpack('I', R[:4])[0], R[4:]
-            triangleList = []
-            for i in range(numTriangles):
-                tri, R = self.triangle_from_string(R)
-                triangleList.append(tri)
+            inf = open(self.filename)
+            triangleList = self.from_input_file(inf)
         else:
             self.filename = self.preamble = None
             triangleList = args
@@ -39,6 +33,20 @@ class Stl:
         for tri in triangleList:
             bb = bb.expand(tri._bbox)
         self._bbox = bb
+
+    def from_input_file(self, inf):
+        """
+        TODO Handle the ASCII STL format
+        """
+        R = inf.read()
+        self.preamble = ''.join(filter(lambda ch: ch != '\0', list(R[:80])))
+        R = R[80:]
+        numTriangles, R = struct.unpack('I', R[:4])[0], R[4:]
+        triangleList = []
+        for i in range(numTriangles):
+            tri, R = self.triangle_from_string(R)
+            triangleList.append(tri)
+        return triangleList
 
     @classmethod
     def triangle_from_string(cls, str):
@@ -155,8 +163,11 @@ class Stl:
         return str
 
 
-def generateRgb(z, filename, red, width=1024, height=768):
-    stl = Stl(filename)
+def generateRgb(z, stl, red, outf=None, width=1024, height=768):
+    if outf is None:
+        outf = sys.stdout
+    if not isinstance(stl, Stl):
+        stl = Stl(stl)
     bbox = stl._bbox.copy()
     sz = bbox.size()
     desired_aspect_ratio = 1. * height / width
@@ -167,8 +178,7 @@ def generateRgb(z, filename, red, width=1024, height=768):
         sz.x = (stl_aspect_ratio / desired_aspect_ratio) * sz.y
     bbox.set_size(sz)
     # TODO scale the STL
-    str = stl.make_layer(z, width, height, bbox, red)
-    sys.stdout.write(str)
+    outf.write(stl.make_layer(z, width, height, bbox, red))
 
 
 def main():
@@ -185,13 +195,19 @@ def main():
         assert args['-f'] and args['-z']
         z = string.atof(args['-z'])
         filename = args['<filename>']
+        stl = Stl(filename)
+        if args['-r'] or args['--red']:
+            red = True
+        else:
+            red = False
         profile = args['-p'] or args['--profile']
         if profile:
             import cProfile
             cProfile.run('generateRgb({0},"{1}",False)'.format(z, filename))
         else:
             # TODO enable red, width and height as command line args
-            generateRgb(z, filename, False)
+            # generateRgb(z, filename, False)
+            generateRgb(z, stl, red)
 
 
 if __name__ == '__main__':

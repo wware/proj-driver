@@ -120,8 +120,8 @@ class Image(object):
         outf.write(self.ary.tostring())
         outf.close()
         os.system(('convert -size {0}x{1} -alpha off -depth 8' +
-                   ' foo.rgb static/image.png').format(W, H))
-        os.system('echo "{0} {1}" > static/image.info'
+                   ' foo.rgb cherrypy/static/image.png').format(W, H))
+        os.system('echo "{0} {1}" > cherrypy/static/image.info'
                   .format(z, duration))
 
 
@@ -139,11 +139,11 @@ class CherryPyServer(threading.Thread):
                 'tools.staticdir.on': True,
                 'tools.staticdir.dir':
                     os.path.join(os.path.abspath(os.path.dirname(__file__)),
-                                 'static')
+                                 'cherrypy/static')
             },
             '/': {
                 'tools.template.on': True,
-                'tools.template.template': 'index.html',
+                'tools.template.template': 'cherrypy/index.html',
                 # We must disable the encode tool because it
                 # transforms our dictionary into a list which
                 # won't be consumed by the jinja2 tool
@@ -172,11 +172,11 @@ class CherryPyServer(threading.Thread):
 
     @cherrypy.expose
     def image(self):
-        return open('static/image.png', 'r').read()
+        return open('cherrypy/static/image.png', 'r').read()
 
     @cherrypy.expose
     def info(self):
-        return open('static/image.info', 'r').read()
+        return open('cherrypy/static/image.info', 'r').read()
 
     def stop(self):
         if self.server_running:
@@ -242,8 +242,8 @@ class CherryPyServer(threading.Thread):
             generateRgb(z, stl, red, outf)
             outf.close()
             os.system(('convert -size {0}x{1} -alpha off -depth 8' +
-                       ' foo.rgb static/image.png').format(W, H))
-            os.system('echo "{0} {1}" > static/image.info'
+                       ' foo.rgb cherrypy/static/image.png').format(W, H))
+            os.system('echo "{0} {1}" > cherrypy/static/image.info'
                       .format(z, duration))
             instance.after_layer()
 

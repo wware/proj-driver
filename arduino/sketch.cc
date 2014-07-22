@@ -1,5 +1,8 @@
 #include <stdlib.h>
 
+// microseconds
+#define STEPPER_MOTOR_STEP_TIME   1000
+
 char buf[10];
 int bufptr;
 
@@ -14,35 +17,31 @@ void setup() {
     bufptr = 0;
 }
 
-void briefWait() {
-    delayMicroseconds(1000);
-}
-
-void run_motor(int dir, int steps) {
-    digitalWrite(DIRECTION, dir);
-    while (steps > 0) {
-        briefWait();
-        digitalWrite(STEP, HIGH);
-        briefWait();
-        digitalWrite(STEP, LOW);
-        steps--;
-    }
-}
+/*
+ * It would be cool to gradually accelerate the stepper from rest and
+ * gradually decelerate to get back to rest, by varying the step time.
+ */
 
 void loop() {
     int dir, steps;
     char c;
-    while (Serial.available()) {
+    if (Serial.available()) {
         buf[bufptr++] = c = (char)Serial.read();
         if (c == '\n') {
             steps = atoi(buf);
             if (steps < 0) {
-                dir = 1;
+                digitalWrite(DIRECTION, HIGH);
                 steps = -steps;
             } else {
-                dir = 0;
+                digitalWrite(DIRECTION, LOW);
             }
-            run_motor(dir, steps);
+            while (steps > 0) {
+                delayMicroseconds(STEPPER_MOTOR_STEP_TIME);
+                digitalWrite(STEP, HIGH);
+                delayMicroseconds(STEPPER_MOTOR_STEP_TIME);
+                digitalWrite(STEP, LOW);
+                steps--;
+            }
             Serial.println("OK");
             bufptr = 0;
             return;

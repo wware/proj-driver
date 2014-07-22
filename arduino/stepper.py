@@ -12,7 +12,7 @@ SIGN = 1
 MOCK = True
 
 
-class StepperComm:
+class Stepper:
 
     def __init__(self):
         from serial import Serial
@@ -21,37 +21,10 @@ class StepperComm:
     def steps(self, num):
         assert type(num) is type(3)
         self.ser.write(repr(num) + '\n')
-        self.ser.readline()
-
-    # 1/100th of an inch
-    def down(self):
-        self.steps(SIGN * 720)
-        print 'down'
-
-    def up(self):
-        self.steps(SIGN * -720)
-        print 'up'
-
-    # 1/10th of an inch
-    def Down(self):
-        self.steps(SIGN * 7200)
-        print 'Down'
-
-    def Up(self):
-        self.steps(SIGN * -7200)
-        print 'Up'
-
-    # 1 inch
-    def wayDown(self):
-        self.steps(SIGN * 72000)
-        print 'wayDown'
-
-    def wayUp(self):
-        self.steps(SIGN * -72000)
-        print 'wayUp'
+        self.ser.readline()   # wait for "OK"
 
 
-class MockStepperComm(StepperComm):
+class MockStepper(Stepper):
     def __init__(self):
         logger.setLevel(logging.DEBUG)
 
@@ -59,19 +32,19 @@ class MockStepperComm(StepperComm):
         logger.debug(num)
 
 if MOCK:
-    StepperComm = MockStepperComm
+    Stepper = MockStepper
 
 
 def main():
     import time
-    scom = StepperComm()
-    scom.up()
-    time.sleep(0.1)
-    scom.down()
-    time.sleep(0.1)
-    scom.Up()
-    time.sleep(0.1)
-    scom.Down()
+    stepper = Stepper()
+    stepper.steps(50)
+    time.sleep(0.5)
+    stepper.steps(-50)
+    time.sleep(0.5)
+    stepper.steps(500)
+    time.sleep(0.5)
+    stepper.steps(-500)
 
 
 if __name__ == '__main__':
